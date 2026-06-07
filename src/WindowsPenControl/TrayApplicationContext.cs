@@ -14,12 +14,15 @@ public sealed class TrayApplicationContext : ApplicationContext
     private readonly ButtplugOutputService _output = new();
     private readonly PenHapticsController _controller = new();
     private readonly System.Windows.Forms.Timer _staleTimer = new();
+    private readonly SynchronizationContext _uiContext;
     private PenTelemetryForm? _telemetryForm;
     private string _captureStatus = "Global capture not started";
     private string _outputStatus = "Intiface not connected";
 
     public TrayApplicationContext()
     {
+        _uiContext = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
+
         _statusItem = new ToolStripMenuItem("Starting") { Enabled = false };
         _armItem = new ToolStripMenuItem("Armed", null, (_, _) => ToggleArmed()) { Checked = false };
         _devicesItem = new ToolStripMenuItem("Devices: none") { Enabled = false };
@@ -53,10 +56,13 @@ public sealed class TrayApplicationContext : ApplicationContext
 
         _output.StatusChanged += (_, message) =>
         {
-            _outputStatus = message;
-            UpdateStatus();
+            PostToUi(() =>
+            {
+                _outputStatus = message;
+                UpdateStatus();
+            });
         };
-        _output.DevicesChanged += (_, _) => UpdateDevices();
+        _output.DevicesChanged += (_, _) => PostToUi(UpdateDevices);
 
         _staleTimer.Interval = 50;
         _staleTimer.Tick += async (_, _) => await CheckStaleAsync();
@@ -101,6 +107,7 @@ public sealed class TrayApplicationContext : ApplicationContext
         try
         {
             await _output.ConnectAsync(DefaultIntifaceUri).ConfigureAwait(true);
+            await _output.StartScanAsync().ConfigureAwait(true);
         }
         catch (Exception ex)
         {
@@ -200,6 +207,17 @@ public sealed class TrayApplicationContext : ApplicationContext
         _notifyIcon.Text = _statusItem.Text.Length <= 63
             ? _statusItem.Text
             : _statusItem.Text[..63];
+    }
+
+    private void PostToUi(Action action)
+    {
+        if (SynchronizationContext.Current == _uiContext)
+        {
+            action();
+            return;
+        }
+
+        _uiContext.Post(_ => action(), null);
     }
 }
 

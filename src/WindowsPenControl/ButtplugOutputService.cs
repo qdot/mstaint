@@ -41,7 +41,16 @@ public sealed class ButtplugOutputService : IHapticsCommandSink, IAsyncDisposabl
         var client = new ButtplugClient("Windows Pen Control");
         client.DeviceAdded += (_, _) => DevicesChanged?.Invoke(this, EventArgs.Empty);
         client.DeviceRemoved += (_, _) => DevicesChanged?.Invoke(this, EventArgs.Empty);
-        client.ServerDisconnect += (_, _) => StatusChanged?.Invoke(this, "Intiface disconnected");
+        client.ScanningFinished += (_, _) =>
+        {
+            StatusChanged?.Invoke(this, "Device scan finished");
+            DevicesChanged?.Invoke(this, EventArgs.Empty);
+        };
+        client.ServerDisconnect += (_, _) =>
+        {
+            StatusChanged?.Invoke(this, "Intiface disconnected");
+            DevicesChanged?.Invoke(this, EventArgs.Empty);
+        };
         client.ErrorReceived += (_, args) => StatusChanged?.Invoke(this, args.Exception.Message);
 
         await client.ConnectAsync(new ButtplugWebsocketConnector(uri), cancellationToken)
@@ -59,8 +68,10 @@ public sealed class ButtplugOutputService : IHapticsCommandSink, IAsyncDisposabl
     public async Task StartScanAsync(CancellationToken cancellationToken = default)
     {
         var client = _client ?? throw new InvalidOperationException("Connect to Intiface before scanning.");
+        DevicesChanged?.Invoke(this, EventArgs.Empty);
         await client.StartScanningAsync(cancellationToken).ConfigureAwait(false);
         StatusChanged?.Invoke(this, "Scanning for devices");
+        DevicesChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public async Task SetIntensityAsync(
