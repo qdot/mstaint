@@ -16,6 +16,7 @@ public sealed class TrayApplicationContext : ApplicationContext
     private readonly System.Windows.Forms.Timer _staleTimer = new();
     private readonly SynchronizationContext _uiContext;
     private PenTelemetryForm? _telemetryForm;
+    private bool _isExiting;
     private string _captureStatus = "Global capture not started";
     private string _outputStatus = "Intiface not connected";
 
@@ -81,6 +82,7 @@ public sealed class TrayApplicationContext : ApplicationContext
     {
         if (disposing)
         {
+            _telemetryForm?.Close();
             _staleTimer.Dispose();
             _penInput.Dispose();
             _notifyIcon.Dispose();
@@ -184,11 +186,30 @@ public sealed class TrayApplicationContext : ApplicationContext
 
     private async Task ExitAsync()
     {
+        if (_isExiting)
+        {
+            return;
+        }
+
+        _isExiting = true;
         _controller.Profile = _controller.Profile with { IsArmed = false };
-        await EmergencyStopAsync("app-exit").ConfigureAwait(true);
-        await _output.DisposeAsync().ConfigureAwait(true);
+
         _notifyIcon.Visible = false;
-        ExitThread();
+        _staleTimer.Stop();
+        _penInput.Dispose();
+        _telemetryForm?.Close();
+
+        try
+        {
+            await _output.DisposeAsync().ConfigureAwait(true);
+        }
+        catch
+        {
+        }
+        finally
+        {
+            ExitThread();
+        }
     }
 
     private void UpdateDevices()
@@ -211,6 +232,11 @@ public sealed class TrayApplicationContext : ApplicationContext
 
     private void PostToUi(Action action)
     {
+        if (_isExiting)
+        {
+            return;
+        }
+
         if (SynchronizationContext.Current == _uiContext)
         {
             action();

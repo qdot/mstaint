@@ -6,6 +6,7 @@ namespace WindowsPenControl;
 
 public sealed class ButtplugOutputService : IHapticsCommandSink, IAsyncDisposable
 {
+    private static readonly TimeSpan DisposeCommandTimeout = TimeSpan.FromSeconds(2);
     private readonly object _syncRoot = new();
     private ButtplugClient? _client;
 
@@ -123,11 +124,49 @@ public sealed class ButtplugOutputService : IHapticsCommandSink, IAsyncDisposabl
 
         if (client.Connected)
         {
-            await client.StopAllDevicesAsync(CancellationToken.None).ConfigureAwait(false);
-            await client.DisconnectAsync().ConfigureAwait(false);
+            await TryWithTimeoutAsync(
+                cancellationToken => client.StopScanningAsync(cancellationToken),
+                DisposeCommandTimeout).ConfigureAwait(false);
+            await TryWithTimeoutAsync(
+                cancellationToken => client.StopAllDevicesAsync(cancellationToken),
+                DisposeCommandTimeout).ConfigureAwait(false);
+            await TryWithTimeoutAsync(
+                () => client.DisconnectAsync(),
+                DisposeCommandTimeout).ConfigureAwait(false);
         }
 
-        await client.DisposeAsync().ConfigureAwait(false);
+        await TryWithTimeoutAsync(
+            () => client.DisposeAsync().AsTask(),
+            DisposeCommandTimeout).ConfigureAwait(false);
+    }
+
+    private static async Task TryWithTimeoutAsync(
+        Func<CancellationToken, Task> operation,
+        TimeSpan timeout)
+    {
+        using var timeoutSource = new CancellationTokenSource(timeout);
+
+        try
+        {
+            await operation(timeoutSource.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (TimeoutException)
+        {
+        }
+    }
+
+    private static async Task TryWithTimeoutAsync(Func<Task> operation, TimeSpan timeout)
+    {
+        var operationTask = operation();
+        var timeoutTask = Task.Delay(timeout);
+
+        if (await Task.WhenAny(operationTask, timeoutTask).ConfigureAwait(false) == operationTask)
+        {
+            await operationTask.ConfigureAwait(false);
+        }
     }
 }
 
