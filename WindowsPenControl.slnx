@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/WindowsPenControl.Core/WindowsPenControl.Core.csproj" />
+    <Project Path="src/WindowsPenControl/WindowsPenControl.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/WindowsPenControl.Core.Tests/WindowsPenControl.Core.Tests.csproj" />
+  </Folder>
+</Solution>
