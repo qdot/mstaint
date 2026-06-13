@@ -90,7 +90,7 @@ jobs:
       - name: Derive build version
         run: |
           [xml]$props = Get-Content Directory.Build.props
-          $version = $props.Project.PropertyGroup.Version | Select-Object -First 1
+          $version = ([string]($props.Project.PropertyGroup.Version | Select-Object -First 1)).Trim()
           if ([string]::IsNullOrWhiteSpace($version)) {
             throw "Could not find Version in Directory.Build.props"
           }
@@ -263,14 +263,17 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($expected)) {
             throw "Could not determine expected package version."
           }
+          $expected = ([string]$expected).Trim()
 
           $app = Get-Item "artifacts\publish\MSTaint\MSTaint.exe"
           $installer = Get-Item "artifacts\installer\MSTaintSetup.exe"
 
           foreach ($item in @($app, $installer)) {
-            Write-Host "$($item.Name): FileVersion=$($item.VersionInfo.FileVersion) ProductVersion=$($item.VersionInfo.ProductVersion)"
-            if ($item.VersionInfo.ProductVersion -ne $expected) {
-              throw "$($item.Name) ProductVersion '$($item.VersionInfo.ProductVersion)' does not match expected '$expected'."
+            $fileVersion = ([string]$item.VersionInfo.FileVersion).Trim()
+            $productVersion = ([string]$item.VersionInfo.ProductVersion).Trim()
+            Write-Host "$($item.Name): FileVersion=$fileVersion ProductVersion=$productVersion"
+            if ($productVersion -ne $expected) {
+              throw "$($item.Name) ProductVersion '$productVersion' does not match expected '$expected'."
             }
           }
 
