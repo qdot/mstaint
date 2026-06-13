@@ -15,7 +15,7 @@ dotnet test tests/WindowsPenControl.Core.Tests/WindowsPenControl.Core.Tests.cspr
 
 1. Start Intiface Central or Intiface Engine with the WebSocket server listening on `ws://127.0.0.1:12345`.
 2. Run `src/WindowsPenControl`.
-3. Use the tray menu to connect Intiface, scan for devices, arm/disarm output, open the pen test window, or trigger emergency stop.
+3. Open the settings window from the tray menu or by double-clicking the tray icon. The settings window and tray menu can both connect Intiface, scan for devices, arm/disarm output, open the pen test window, or trigger emergency stop.
 
 ## Capture Notes
 

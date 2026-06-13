@@ -15,6 +15,7 @@ public sealed class TrayApplicationContext : ApplicationContext
     private readonly PenHapticsController _controller = new();
     private readonly System.Windows.Forms.Timer _staleTimer = new();
     private readonly SynchronizationContext _uiContext;
+    private SettingsForm? _settingsForm;
     private PenTelemetryForm? _telemetryForm;
     private bool _isExiting;
     private string _captureStatus = "Global capture not started";
@@ -32,6 +33,7 @@ public sealed class TrayApplicationContext : ApplicationContext
         menu.Items.Add(_statusItem);
         menu.Items.Add(_devicesItem);
         menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add(new ToolStripMenuItem("Open Settings", null, (_, _) => OpenSettingsWindow()));
         menu.Items.Add(_armItem);
         menu.Items.Add(new ToolStripMenuItem("Connect Intiface", null, async (_, _) => await ConnectIntifaceAsync()));
         menu.Items.Add(new ToolStripMenuItem("Scan Devices", null, async (_, _) => await ScanDevicesAsync()));
@@ -47,6 +49,7 @@ public sealed class TrayApplicationContext : ApplicationContext
             Text = "Windows Pen Control",
             Visible = true,
         };
+        _notifyIcon.DoubleClick += (_, _) => OpenSettingsWindow();
 
         _penInput.SampleReceived += async (_, sample) => await HandlePenSampleAsync(sample);
         _penInput.CaptureError += (_, message) =>
@@ -81,6 +84,7 @@ public sealed class TrayApplicationContext : ApplicationContext
     {
         if (disposing)
         {
+            _settingsForm?.Close();
             _telemetryForm?.Close();
             _staleTimer.Dispose();
             _penInput.Dispose();
@@ -92,7 +96,18 @@ public sealed class TrayApplicationContext : ApplicationContext
 
     private void ToggleArmed()
     {
-        var isArmed = !_controller.Profile.IsArmed;
+        SetArmed(!_controller.Profile.IsArmed);
+    }
+
+    private void SetArmed(bool isArmed)
+    {
+        if (_controller.Profile.IsArmed == isArmed)
+        {
+            _armItem.Checked = isArmed;
+            UpdateStatus();
+            return;
+        }
+
         _controller.Profile = _controller.Profile with { IsArmed = isArmed };
         _armItem.Checked = isArmed;
         UpdateStatus();
@@ -101,6 +116,29 @@ public sealed class TrayApplicationContext : ApplicationContext
         {
             _ = EmergencyStopAsync("disarmed");
         }
+    }
+
+    private void OpenSettingsWindow()
+    {
+        if (_settingsForm is { IsDisposed: false })
+        {
+            UpdateSettingsWindow();
+            _settingsForm.Activate();
+            return;
+        }
+
+        _settingsForm = new SettingsForm();
+        _settingsForm.ArmedChanged += (_, isArmed) => SetArmed(isArmed);
+        _settingsForm.ConnectRequested += async (_, _) => await ConnectIntifaceAsync();
+        _settingsForm.ScanRequested += async (_, _) => await ScanDevicesAsync();
+        _settingsForm.PenTestRequested += (_, _) => OpenTelemetryWindow();
+        _settingsForm.EmergencyStopRequested += async (_, _) => await EmergencyStopAsync("manual-stop");
+        _settingsForm.ExitRequested += async (_, _) => await ExitAsync();
+        _settingsForm.FormClosed += (_, _) => _settingsForm = null;
+
+        UpdateSettingsWindow();
+        _settingsForm.Show();
+        _settingsForm.Activate();
     }
 
     private async Task ConnectIntifaceAsync()
@@ -196,6 +234,7 @@ public sealed class TrayApplicationContext : ApplicationContext
         _notifyIcon.Visible = false;
         _staleTimer.Stop();
         _penInput.Dispose();
+        _settingsForm?.Close();
         _telemetryForm?.Close();
 
         try
@@ -217,6 +256,7 @@ public sealed class TrayApplicationContext : ApplicationContext
         _devicesItem.Text = devices.Count == 0
             ? "Devices: none"
             : $"Devices: {string.Join(", ", devices.Select(device => device.Name))}";
+        UpdateSettingsWindow();
     }
 
     private void UpdateStatus()
@@ -227,6 +267,23 @@ public sealed class TrayApplicationContext : ApplicationContext
         _notifyIcon.Text = _statusItem.Text.Length <= 63
             ? _statusItem.Text
             : _statusItem.Text[..63];
+        UpdateSettingsWindow();
+    }
+
+    private void UpdateSettingsWindow()
+    {
+        if (_settingsForm is null || _settingsForm.IsDisposed)
+        {
+            return;
+        }
+
+        _settingsForm.UpdateSnapshot(new SettingsSnapshot(
+            _controller.Profile.IsArmed,
+            _output.IsConnected,
+            _controller.LastIntensity,
+            _captureStatus,
+            _outputStatus,
+            _output.Devices));
     }
 
     private void PostToUi(Action action)
