@@ -11,6 +11,17 @@ dotnet build WindowsPenControl.slnx
 dotnet test tests/WindowsPenControl.Core.Tests/WindowsPenControl.Core.Tests.csproj
 ```
 
+## Installer
+
+The Inno Setup installer packages the Release publish output from `artifacts/publish/WindowsPenControl` and installs to `C:\Program Files\WindowsPenControl`.
+
+```powershell
+dotnet publish src/WindowsPenControl/WindowsPenControl.csproj -c Release -f net10.0-windows -r win-x64 --self-contained false -o artifacts/publish/WindowsPenControl
+& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" installer/WindowsPenControl.iss
+```
+
+Sign the published app binaries before compiling the installer when using the `uiAccess` manifest. The installer output is written to `artifacts/installer/WindowsPenControlSetup.exe`.
+
 ## Run On Windows
 
 1. Start Intiface Central or Intiface Engine with the WebSocket server listening on `ws://127.0.0.1:12345`.
@@ -51,5 +62,5 @@ Keep the drawing app on its normal pressure API, such as Windows Ink/Windows 8+ 
 
 Raw Input registration should work without UIAccess. If passive global paths fail, use the pen test window to validate local `WM_POINTER*` pressure/tilt/button telemetry.
 
-The manifest currently sets `uiAccess="false"` intentionally. Change this only when the certificate, signing, and install-path requirements are ready to test on Windows.
+The manifest currently sets `uiAccess="true"`, so release binaries should be signed and installed from a trusted location such as Program Files.
 
