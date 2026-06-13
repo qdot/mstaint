@@ -3,6 +3,7 @@ obj/
 TestResults/
 .vs/
 .vscode/
+artifacts/
 *.user
 *.suo
 

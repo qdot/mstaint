@@ -70,9 +70,8 @@ public sealed class TrayApplicationContext : ApplicationContext
         _staleTimer.Start();
 
         _penInput.Start();
-        _captureStatus = _penInput.TryStartGlobalCapture()
-            ? "Global pen capture active"
-            : "Global pen capture unavailable; use Pen Test Window";
+        _penInput.TryStartGlobalCapture();
+        _captureStatus = _penInput.CaptureStatus;
 
         UpdateStatus();
         UpdateDevices();
