@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MSTaint.Core/MSTaint.Core.csproj" />
+    <Project Path="src/MSTaint/MSTaint.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MSTaint.Core.Tests/MSTaint.Core.Tests.csproj" />
+  </Folder>
+</Solution>

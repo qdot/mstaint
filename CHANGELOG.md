@@ -6,7 +6,7 @@
 
 - Passive Raw Input HID and WinTab capture paths for relaying tablet pressure to Intiface while focused drawing apps keep their own Windows Ink pressure stream.
 - Settings window with status, intensity, device list, Intiface controls, arm/disarm, pen test, emergency stop, and exit actions.
-- Inno Setup installer for installing Windows Pen Control into Program Files.
+- Inno Setup installer for installing MSTaint into Program Files.
 - README capture diagram showing the Windows Ink, Raw HID, WinTab, and Intiface data split.
 
 ### Changed

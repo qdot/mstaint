@@ -1,0 +1,288 @@
+name: Windows build
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  windows-amd64:
+    runs-on: windows-amd64
+    timeout-minutes: 60
+
+    defaults:
+      run:
+        shell: powershell
+        working-directory: buttdraw
+
+    steps:
+      - name: Checkout
+        uses: https://data.forgejo.org/actions/checkout@v4
+        with:
+          path: buttdraw
+
+      - name: Setup .NET
+        uses: https://data.forgejo.org/actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Verify signing secrets
+        env:
+          WINDOWS_CODESIGN_CERT_BASE64: ${{ secrets.WINDOWS_CODESIGN_CERT_BASE64 }}
+          WINDOWS_CODESIGN_KEY_CONTAINER: ${{ secrets.WINDOWS_CODESIGN_KEY_CONTAINER }}
+          WINDOWS_CODESIGN_TOKEN_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_TOKEN_PASSWORD }}
+        run: |
+          $missing = @()
+          foreach ($name in @("WINDOWS_CODESIGN_CERT_BASE64", "WINDOWS_CODESIGN_KEY_CONTAINER", "WINDOWS_CODESIGN_TOKEN_PASSWORD")) {
+            if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
+              $missing += $name
+            }
+          }
+
+          if ($missing.Count -gt 0) {
+            foreach ($name in $missing) {
+              Write-Error "Missing required Forgejo secret: $name"
+            }
+            exit 1
+          }
+
+      - name: Tool versions
+        run: |
+          git --version
+          dotnet --info
+
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" `
+            -Recurse `
+            -Filter signtool.exe `
+            -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match '\\x64\\signtool\.exe$' } |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+
+          if (-not $signtool) {
+            throw "signtool.exe not found. Install Windows SDK signing tools on the Windows builder."
+          }
+
+          Write-Host "SignTool: $($signtool.FullName)"
+
+          $iscc = Get-Command iscc -ErrorAction SilentlyContinue
+          if ($iscc) {
+            $isccPath = $iscc.Source
+          } else {
+            $candidates = @(
+              "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+              "${env:ProgramFiles}\Inno Setup 6\ISCC.exe",
+              "${env:LOCALAPPDATA}\Programs\Inno Setup 6\ISCC.exe"
+            )
+            $isccPath = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          }
+
+          if (-not $isccPath) {
+            throw "Inno Setup 6 is required. Install it or add ISCC.exe to PATH."
+          }
+
+          Write-Host "Inno Setup compiler: $isccPath"
+          Get-Item $isccPath | Select-Object -ExpandProperty VersionInfo | Format-List ProductVersion,FileVersion
+
+      - name: Derive build version
+        run: |
+          [xml]$props = Get-Content Directory.Build.props
+          $version = $props.Project.PropertyGroup.Version | Select-Object -First 1
+          if ([string]::IsNullOrWhiteSpace($version)) {
+            throw "Could not find Version in Directory.Build.props"
+          }
+
+          "BUILD_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "Build version: $version"
+
+      - name: Build and test
+        run: |
+          dotnet restore MSTaint.slnx
+          dotnet build MSTaint.slnx -c Release --no-restore
+          dotnet test tests\MSTaint.Core.Tests\MSTaint.Core.Tests.csproj -c Release --no-build
+
+      - name: Publish Windows app
+        run: |
+          dotnet publish src\MSTaint\MSTaint.csproj `
+            -c Release `
+            -f net10.0-windows `
+            -r win-x64 `
+            --self-contained false `
+            -o artifacts\publish\MSTaint
+
+      - name: Sign Windows app payload
+        env:
+          WINDOWS_CODESIGN_CERT_BASE64: ${{ secrets.WINDOWS_CODESIGN_CERT_BASE64 }}
+          WINDOWS_CODESIGN_KEY_CONTAINER: ${{ secrets.WINDOWS_CODESIGN_KEY_CONTAINER }}
+          WINDOWS_CODESIGN_TOKEN_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_TOKEN_PASSWORD }}
+          WINDOWS_CODESIGN_CSP: ${{ secrets.WINDOWS_CODESIGN_CSP }}
+          WINDOWS_CODESIGN_TIMESTAMP_URL: ${{ secrets.WINDOWS_CODESIGN_TIMESTAMP_URL }}
+        run: |
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" `
+            -Recurse `
+            -Filter signtool.exe `
+            -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match '\\x64\\signtool\.exe$' } |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+
+          if (-not $signtool) {
+            throw "signtool.exe not found. Install Windows SDK signing tools on the Windows builder."
+          }
+
+          $certPath = Join-Path $env:RUNNER_TEMP "windows-codesign.cer"
+          [IO.File]::WriteAllBytes($certPath, [Convert]::FromBase64String($env:WINDOWS_CODESIGN_CERT_BASE64))
+
+          $csp = $env:WINDOWS_CODESIGN_CSP
+          if ([string]::IsNullOrWhiteSpace($csp)) {
+            $csp = "eToken Base Cryptographic Provider"
+          }
+
+          $timestampUrl = $env:WINDOWS_CODESIGN_TIMESTAMP_URL
+          if ([string]::IsNullOrWhiteSpace($timestampUrl)) {
+            $timestampUrl = "http://timestamp.digicert.com"
+          }
+
+          $keyContainer = "[{{$env:WINDOWS_CODESIGN_TOKEN_PASSWORD}}]=$env:WINDOWS_CODESIGN_KEY_CONTAINER"
+          $files = Get-ChildItem "artifacts\publish\MSTaint" -Recurse -File |
+            Where-Object { $_.Extension -in @(".exe", ".dll") }
+
+          foreach ($file in $files) {
+            Write-Host "Signing $($file.FullName)"
+            & $signtool.FullName sign `
+              /fd SHA256 `
+              /tr $timestampUrl `
+              /td SHA256 `
+              /f $certPath `
+              /csp $csp `
+              /kc $keyContainer `
+              /as `
+              /v `
+              $file.FullName
+
+            if ($LASTEXITCODE -ne 0) {
+              exit $LASTEXITCODE
+            }
+
+            & $signtool.FullName verify /pa /v $file.FullName
+            if ($LASTEXITCODE -ne 0) {
+              exit $LASTEXITCODE
+            }
+          }
+
+      - name: Build Inno Setup installer
+        run: |
+          $iscc = Get-Command iscc -ErrorAction SilentlyContinue
+          if ($iscc) {
+            $isccPath = $iscc.Source
+          } else {
+            $candidates = @(
+              "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+              "${env:ProgramFiles}\Inno Setup 6\ISCC.exe",
+              "${env:LOCALAPPDATA}\Programs\Inno Setup 6\ISCC.exe"
+            )
+            $isccPath = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          }
+
+          if (-not $isccPath) {
+            throw "Inno Setup 6 is required. Install it or add ISCC.exe to PATH."
+          }
+
+          & $isccPath installer\MSTaint.iss
+          exit $LASTEXITCODE
+
+      - name: Sign Windows installer
+        env:
+          WINDOWS_CODESIGN_CERT_BASE64: ${{ secrets.WINDOWS_CODESIGN_CERT_BASE64 }}
+          WINDOWS_CODESIGN_KEY_CONTAINER: ${{ secrets.WINDOWS_CODESIGN_KEY_CONTAINER }}
+          WINDOWS_CODESIGN_TOKEN_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_TOKEN_PASSWORD }}
+          WINDOWS_CODESIGN_CSP: ${{ secrets.WINDOWS_CODESIGN_CSP }}
+          WINDOWS_CODESIGN_TIMESTAMP_URL: ${{ secrets.WINDOWS_CODESIGN_TIMESTAMP_URL }}
+        run: |
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" `
+            -Recurse `
+            -Filter signtool.exe `
+            -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match '\\x64\\signtool\.exe$' } |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+
+          if (-not $signtool) {
+            throw "signtool.exe not found. Install Windows SDK signing tools on the Windows builder."
+          }
+
+          $certPath = Join-Path $env:RUNNER_TEMP "windows-codesign.cer"
+          if (-not (Test-Path $certPath)) {
+            [IO.File]::WriteAllBytes($certPath, [Convert]::FromBase64String($env:WINDOWS_CODESIGN_CERT_BASE64))
+          }
+
+          $csp = $env:WINDOWS_CODESIGN_CSP
+          if ([string]::IsNullOrWhiteSpace($csp)) {
+            $csp = "eToken Base Cryptographic Provider"
+          }
+
+          $timestampUrl = $env:WINDOWS_CODESIGN_TIMESTAMP_URL
+          if ([string]::IsNullOrWhiteSpace($timestampUrl)) {
+            $timestampUrl = "http://timestamp.digicert.com"
+          }
+
+          $keyContainer = "[{{$env:WINDOWS_CODESIGN_TOKEN_PASSWORD}}]=$env:WINDOWS_CODESIGN_KEY_CONTAINER"
+          $installerPath = "artifacts\installer\MSTaintSetup.exe"
+
+          & $signtool.FullName sign `
+            /fd SHA256 `
+            /tr $timestampUrl `
+            /td SHA256 `
+            /f $certPath `
+            /csp $csp `
+            /kc $keyContainer `
+            /v `
+            $installerPath
+
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+
+          & $signtool.FullName verify /pa /v $installerPath
+          exit $LASTEXITCODE
+
+      - name: Verify packaged versions
+        run: |
+          $expected = $env:BUILD_VERSION
+          $app = Get-Item "artifacts\publish\MSTaint\MSTaint.exe"
+          $installer = Get-Item "artifacts\installer\MSTaintSetup.exe"
+
+          foreach ($item in @($app, $installer)) {
+            Write-Host "$($item.Name): FileVersion=$($item.VersionInfo.FileVersion) ProductVersion=$($item.VersionInfo.ProductVersion)"
+            if ($item.VersionInfo.ProductVersion -ne $expected) {
+              throw "$($item.Name) ProductVersion '$($item.VersionInfo.ProductVersion)' does not match expected '$expected'."
+            }
+          }
+
+      - name: Zip Windows artifacts
+        run: |
+          $zipDir = "artifacts\ci"
+          $zipPath = Join-Path $zipDir "MSTaint-windows-x64.zip"
+          New-Item -ItemType Directory -Force -Path $zipDir | Out-Null
+          if (Test-Path $zipPath) {
+            Remove-Item -Force $zipPath
+          }
+
+          Compress-Archive `
+            -Path "artifacts\installer\MSTaintSetup.exe", "artifacts\publish\MSTaint" `
+            -DestinationPath $zipPath `
+            -CompressionLevel Optimal
+
+          $zip = Get-Item $zipPath
+          Write-Host "Windows artifact zip: $($zip.FullName) ($($zip.Length) bytes)"
+
+      - name: Upload Windows artifacts
+        uses: https://code.forgejo.org/forgejo/upload-artifact@v4
+        with:
+          name: windows-x64-build
+          path: buttdraw/artifacts/ci/MSTaint-windows-x64.zip
+          if-no-files-found: error
+          compression-level: 0
