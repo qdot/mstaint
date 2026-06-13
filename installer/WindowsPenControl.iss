@@ -1,5 +1,6 @@
 #define AppName "Windows Pen Control"
-#define AppVersion "0.1.0"
+#define AppVersion "1.0.0"
+#define AppFileVersion "1.0.0.0"
 #define AppPublisher "qdot"
 #define AppExeName "WindowsPenControl.exe"
 #define PublishDir "..\artifacts\publish\WindowsPenControl"
@@ -17,6 +18,11 @@ DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 OutputDir=..\artifacts\installer
 OutputBaseFilename=WindowsPenControlSetup
+VersionInfoVersion={#AppFileVersion}
+VersionInfoCompany={#AppPublisher}
+VersionInfoDescription={#AppName} Setup
+VersionInfoProductName={#AppName}
+VersionInfoProductVersion={#AppVersion}
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern

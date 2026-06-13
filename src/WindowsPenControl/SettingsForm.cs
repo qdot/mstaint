@@ -15,7 +15,8 @@ internal sealed class SettingsForm : Form
 
     public SettingsForm()
     {
-        Text = "Windows Pen Control";
+        var displayName = GetDisplayName();
+        Text = displayName;
         ClientSize = new Size(600, 480);
         MinimumSize = new Size(620, 540);
         StartPosition = FormStartPosition.CenterScreen;
@@ -36,7 +37,7 @@ internal sealed class SettingsForm : Form
 
         var header = new Label
         {
-            Text = "Windows Pen Control",
+            Text = displayName,
             AutoSize = true,
             Font = new Font(Font, FontStyle.Bold),
             Margin = new Padding(0, 0, 0, 10),
@@ -269,6 +270,14 @@ internal sealed class SettingsForm : Form
     private static string FormatDevice(HapticDevice device)
     {
         return device.HasVibrate ? device.Name : $"{device.Name} (no vibrate)";
+    }
+
+    private static string GetDisplayName()
+    {
+        var version = typeof(SettingsForm).Assembly.GetName().Version;
+        return version is null
+            ? "Windows Pen Control"
+            : $"Windows Pen Control {version.ToString(3)}";
     }
 }
 
