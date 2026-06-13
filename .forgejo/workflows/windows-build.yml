@@ -95,7 +95,10 @@ jobs:
             throw "Could not find Version in Directory.Build.props"
           }
 
-          "BUILD_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          [IO.File]::AppendAllText(
+            $env:GITHUB_ENV,
+            "BUILD_VERSION=$version$([Environment]::NewLine)",
+            [Text.UTF8Encoding]::new($false))
           Write-Host "Build version: $version"
 
       - name: Build and test
@@ -252,6 +255,15 @@ jobs:
       - name: Verify packaged versions
         run: |
           $expected = $env:BUILD_VERSION
+          if ([string]::IsNullOrWhiteSpace($expected)) {
+            [xml]$props = Get-Content Directory.Build.props
+            $expected = $props.Project.PropertyGroup.Version | Select-Object -First 1
+          }
+
+          if ([string]::IsNullOrWhiteSpace($expected)) {
+            throw "Could not determine expected package version."
+          }
+
           $app = Get-Item "artifacts\publish\MSTaint\MSTaint.exe"
           $installer = Get-Item "artifacts\installer\MSTaintSetup.exe"
 
