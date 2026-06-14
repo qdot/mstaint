@@ -40,9 +40,10 @@ The Forgejo Windows workflow expects these signing secrets, matching the token-b
 
 ## Run On Windows
 
-1. Start Intiface Central or Intiface Engine with the WebSocket server listening on `ws://127.0.0.1:12345`.
-2. Run `src/MSTaint`.
-3. Open the settings window from the tray menu or by double-clicking the tray icon. The settings window and tray menu can both connect Intiface, scan for devices, arm/disarm output, open the pen test window, or trigger emergency stop.
+1. Run the [installer, available in our releases section.](https://github.com/qdot/mstaint/releases/latest).
+2. Start Intiface Central or Intiface Engine with the WebSocket server listening on `ws://127.0.0.1:12345`.
+3. Run `MSTaint` from the Start Menu.
+4. Program opens as a tray app (currently with no icon, it'll just look like a window), there will be no App on the start bar. Open the settings window from the tray menu or by double-clicking the tray icon. The settings window and tray menu can both connect Intiface, scan for devices, arm/disarm output, open the pen test window, or trigger emergency stop.
 
 ## Paint Program Setup
 
