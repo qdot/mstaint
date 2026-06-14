@@ -4,40 +4,6 @@ MSTaint is a C#/.NET tray utility prototype for controlling Buttplug devices fro
 
 The current version targets Windows, connects to an external Intiface Central/Engine instance over WebSocket, and maps pen pressure to vibration intensity. The core mapping and safety logic is cross-platform and covered by tests; Win32 pen capture needs to be tested on Windows hardware.
 
-## Build
-
-```powershell
-dotnet build MSTaint.slnx
-dotnet test tests/MSTaint.Core.Tests/MSTaint.Core.Tests.csproj
-```
-
-## Installer
-
-The Inno Setup installer packages the Release publish output from `artifacts/publish/MSTaint` and installs to `C:\Program Files\MSTaint`.
-
-```powershell
-dotnet publish src/MSTaint/MSTaint.csproj -c Release -f net10.0-windows -r win-x64 --self-contained false -o artifacts/publish/MSTaint
-& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" installer/MSTaint.iss
-```
-
-The installer output is written to `artifacts/installer/MSTaintSetup.exe`.
-
-## Distribution And Signing
-
-_AKA Why you probably shouldn't try to fork and build this yourself unless you want to deal with a ton of bullshit._
-
-Distribution builds require code signing. The app manifest currently sets `uiAccess="true"`, and Windows only grants UIAccess to signed binaries installed from a trusted location such as Program Files. For release builds, sign the published app binaries before compiling the installer, then sign the installer itself.
-
-Unsigned local builds are still useful for development and diagnostics, but they are not suitable for packaged distribution and should not be expected to behave the same as the signed Program Files install.
-
-The Forgejo Windows workflow expects these signing secrets, matching the token-backed SignTool setup used by other Intiface Windows builds:
-
-- `WINDOWS_CODESIGN_CERT_BASE64`
-- `WINDOWS_CODESIGN_KEY_CONTAINER`
-- `WINDOWS_CODESIGN_TOKEN_PASSWORD`
-- `WINDOWS_CODESIGN_CSP` (optional, defaults to `eToken Base Cryptographic Provider`)
-- `WINDOWS_CODESIGN_TIMESTAMP_URL` (optional, defaults to `http://timestamp.digicert.com`)
-
 ## Run On Windows
 
 1. Run the [installer, available in our releases section.](https://github.com/qdot/mstaint/releases/latest).
@@ -118,6 +84,40 @@ Since this is made to be used with paint programs, development methods bear ment
 While this project is derived from a project I originaly wrote and never released ('cause it never worked enough for me to want to deal with the support on it), this implementation uses GPT-5.5 w/ GLM-5.2 review to patch some of the issues I was having and handle a lot of the P/Invoke reworking and Win32 drudgery (I was writing win32 in the 90s and am officially too old for that shit).
 
 If this implementation method bothers you, do not use this program. If you would like to reimplement it yourself, see the above Injection Path idea and create a project the good ol' open source way, by copying the BSD-Licensed GHR code I wrote by hand.
+
+## Build
+
+```powershell
+dotnet build MSTaint.slnx
+dotnet test tests/MSTaint.Core.Tests/MSTaint.Core.Tests.csproj
+```
+
+## Installer
+
+The Inno Setup installer packages the Release publish output from `artifacts/publish/MSTaint` and installs to `C:\Program Files\MSTaint`.
+
+```powershell
+dotnet publish src/MSTaint/MSTaint.csproj -c Release -f net10.0-windows -r win-x64 --self-contained false -o artifacts/publish/MSTaint
+& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" installer/MSTaint.iss
+```
+
+The installer output is written to `artifacts/installer/MSTaintSetup.exe`.
+
+## Distribution And Signing
+
+_AKA Why you probably shouldn't try to fork and build this yourself unless you want to deal with a ton of bullshit._
+
+Distribution builds require code signing. The app manifest currently sets `uiAccess="true"`, and Windows only grants UIAccess to signed binaries installed from a trusted location such as Program Files. For release builds, sign the published app binaries before compiling the installer, then sign the installer itself.
+
+Unsigned local builds are still useful for development and diagnostics, but they are not suitable for packaged distribution and should not be expected to behave the same as the signed Program Files install.
+
+The Forgejo Windows workflow expects these signing secrets, matching the token-backed SignTool setup used by other Intiface Windows builds:
+
+- `WINDOWS_CODESIGN_CERT_BASE64`
+- `WINDOWS_CODESIGN_KEY_CONTAINER`
+- `WINDOWS_CODESIGN_TOKEN_PASSWORD`
+- `WINDOWS_CODESIGN_CSP` (optional, defaults to `eToken Base Cryptographic Provider`)
+- `WINDOWS_CODESIGN_TIMESTAMP_URL` (optional, defaults to `http://timestamp.digicert.com`)
 
 ## License
 
