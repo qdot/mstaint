@@ -15,11 +15,11 @@ The current version targets Windows, connects to an external Intiface Central/En
 
 ### Tray Menu
 
-[](docs/tray.png)
+![](docs/tray.png)
 
 ### Settings Menu (May require resizing window to be larger)
 
-[](docs/settings.png)
+![](docs/settings.png)
 
 ## Paint Program Setup
 
