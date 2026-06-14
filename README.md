@@ -31,6 +31,8 @@ Do not configure paint programs to require an exclusive WinTab stream if pressur
 
 ### Specific Paint Program Instructions
 
+- MS Paint (v11, the newer one that comes with Win11): Uses Windows Ink by default, no reconfig needed
+- Paint.Net: Uses Windows Ink by default, no reconfig needed
 - Krita: use the Windows Ink/Windows 8+ pointer tablet input mode (in Settings)
 - Clip Studio Paint: use Tablet PC/Windows Ink path when available (in Settings)
 - Fire Alpaca: Use "Tablet PC" in "Stylus Pressure API", even if on PC + Tablet
