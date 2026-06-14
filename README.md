@@ -20,7 +20,13 @@ dotnet publish src/MSTaint/MSTaint.csproj -c Release -f net10.0-windows -r win-x
 & "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" installer/MSTaint.iss
 ```
 
-Sign the published app binaries before compiling the installer when using the `uiAccess` manifest. The installer output is written to `artifacts/installer/MSTaintSetup.exe`.
+The installer output is written to `artifacts/installer/MSTaintSetup.exe`.
+
+## Distribution And Signing
+
+Distribution builds require code signing. The app manifest currently sets `uiAccess="true"`, and Windows only grants UIAccess to signed binaries installed from a trusted location such as Program Files. For release builds, sign the published app binaries before compiling the installer, then sign the installer itself.
+
+Unsigned local builds are still useful for development and diagnostics, but they are not suitable for packaged distribution and should not be expected to behave the same as the signed Program Files install.
 
 The Forgejo Windows workflow expects these signing secrets, matching the token-backed SignTool setup used by other Intiface Windows builds:
 
@@ -35,6 +41,12 @@ The Forgejo Windows workflow expects these signing secrets, matching the token-b
 1. Start Intiface Central or Intiface Engine with the WebSocket server listening on `ws://127.0.0.1:12345`.
 2. Run `src/MSTaint`.
 3. Open the settings window from the tray menu or by double-clicking the tray icon. The settings window and tray menu can both connect Intiface, scan for devices, arm/disarm output, open the pen test window, or trigger emergency stop.
+
+## Paint Program Setup
+
+Set paint programs to use Windows Ink, Windows 8+ Pointer Input, or the program's equivalent modern pointer input mode for tablet pressure. MSTaint's current capture model is designed around the paint program keeping its own Windows Ink stream while MSTaint listens passively to driver-exposed Raw Input HID or WinTab pressure samples.
+
+Do not configure paint programs to require an exclusive WinTab stream if pressure stops reaching MSTaint or the paint program while the canvas is focused. In Krita, use the Windows Ink/Windows 8+ pointer tablet input mode. Clip Studio Paint should use its Tablet PC/Windows Ink path when available.
 
 ## Capture Notes
 
@@ -66,9 +78,9 @@ The Raw Input path reads HID `Tip Pressure` reports and normalizes each device's
 
 `RegisterPointerInputTarget` is intentionally disabled by default because it redirects all pen pointer input to this app instead of teeing it; that breaks Windows Ink pressure in focused drawing apps such as Krita or Clip Studio Paint. For diagnostics only, set `WPC_ENABLE_POINTER_REDIRECT=1` before launching the app to enable Windows pointer redirection.
 
-Keep the drawing app on its normal pressure API, such as Windows Ink/Windows 8+ Pointer Input for Krita. MSTaint should receive pressure from the passive Raw HID or WinTab paths while the focused drawing app receives its own pressure stream.
+Keep the drawing app on its Windows Ink pressure API, such as Windows Ink/Windows 8+ Pointer Input for Krita. MSTaint should receive pressure from the passive Raw HID or WinTab paths while the focused drawing app receives its own pressure stream.
 
 Raw Input registration should work without UIAccess. If passive global paths fail, use the pen test window to validate local `WM_POINTER*` pressure/tilt/button telemetry.
 
-The manifest currently sets `uiAccess="true"`, so release binaries should be signed and installed from a trusted location such as Program Files.
+The manifest currently sets `uiAccess="true"`, so release binaries must be signed and installed from a trusted location such as Program Files.
 
