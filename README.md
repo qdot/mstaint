@@ -34,6 +34,7 @@ Do not configure paint programs to require an exclusive WinTab stream if pressur
 - Krita: use the Windows Ink/Windows 8+ pointer tablet input mode (in Settings)
 - Clip Studio Paint: use Tablet PC/Windows Ink path when available (in Settings)
 - Fire Alpaca: Use "Tablet PC" in "Stylus Pressure API", even if on PC + Tablet
+- ArtRage: ArtRage v6 Tested, Vitae requires payment and I don't wanna. ArtRage v6 seems to use Windows Ink by default, so things should _just work_. If pressure routing does not seem to be working, make sure "WinTab" has an X in `Settings -> Tablet Options`, not a checkmark.
 - MyPaint: Currently not usable.
 
 ## LLM Usage
