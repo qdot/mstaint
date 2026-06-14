@@ -84,3 +84,18 @@ Raw Input registration should work without UIAccess. If passive global paths fai
 
 The manifest currently sets `uiAccess="true"`, so release binaries must be signed and installed from a trusted location such as Program Files.
 
+## Possible WinTab Injection Path
+
+If Windows Ink compatibility is not enough for a target workflow, a future WinTab-specific tee could use the same general model as `intiface-game-haptics-router`: inject a small payload into the focused paint process with EasyHook, hook only the WinTab functions that expose context and queue reads, and report copied pressure samples back to MSTaint over IPC.
+
+This avoids shipping a proxy `wintab32.dll` and avoids recreating the full WinTab export surface. The paint program would still load the real tablet driver `wintab32.dll`; the injected payload would detour selected functions in-process:
+
+- `WTOpenA/W` to record each `HCTX` and its requested `LOGCONTEXT`.
+- `WTClose` to discard context state.
+- `WTPacket`, `WTPacketsGet`, `WTDataGet`, and `WTDataPeek` to copy packets after the real WinTab call returns.
+- `WTInfoA/W` to query pressure axis metadata and logical ranges when needed.
+
+The hook must not independently read from the WinTab queue. It should forward to the real function first, let the paint app receive its packets unchanged, then copy the returned packet data into a local queue. A payload loop can batch those samples back to MSTaint, keeping IPC work out of the paint app's input thread.
+
+The hard part is still generic packet decoding. WinTab packet layout depends on the `LOGCONTEXT.lcPktData` requested by each app, so the payload needs per-context decoding logic rather than assuming a fixed packet structure. Supporting both 32-bit and 64-bit paint apps would also require matching hook payload builds.
+
