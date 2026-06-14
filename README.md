@@ -2,7 +2,7 @@
 
 MSTaint is a C#/.NET tray utility prototype for controlling Buttplug devices from pen tablet telemetry.
 
-The current slice targets Windows, connects to an external Intiface Central/Engine instance over WebSocket, and maps pen pressure to vibration intensity. The core mapping and safety logic is cross-platform and covered by tests; Win32 pen capture needs to be tested on Windows hardware.
+The current version targets Windows, connects to an external Intiface Central/Engine instance over WebSocket, and maps pen pressure to vibration intensity. The core mapping and safety logic is cross-platform and covered by tests; Win32 pen capture needs to be tested on Windows hardware.
 
 ## Build
 
@@ -23,6 +23,8 @@ dotnet publish src/MSTaint/MSTaint.csproj -c Release -f net10.0-windows -r win-x
 The installer output is written to `artifacts/installer/MSTaintSetup.exe`.
 
 ## Distribution And Signing
+
+_AKA Why you probably shouldn't try to fork and build this yourself unless you want to deal with a ton of bullshit._
 
 Distribution builds require code signing. The app manifest currently sets `uiAccess="true"`, and Windows only grants UIAccess to signed binaries installed from a trusted location such as Program Files. For release builds, sign the published app binaries before compiling the installer, then sign the installer itself.
 
@@ -98,4 +100,44 @@ This avoids shipping a proxy `wintab32.dll` and avoids recreating the full WinTa
 The hook must not independently read from the WinTab queue. It should forward to the real function first, let the paint app receive its packets unchanged, then copy the returned packet data into a local queue. A payload loop can batch those samples back to MSTaint, keeping IPC work out of the paint app's input thread.
 
 The hard part is still generic packet decoding. WinTab packet layout depends on the `LOGCONTEXT.lcPktData` requested by each app, so the payload needs per-context decoding logic rather than assuming a fixed packet structure. Supporting both 32-bit and 64-bit paint apps would also require matching hook payload builds.
+
+## LLM Usage
+
+Since this is made to be used with paint programs, development methods bear mentioning as many potential users may see this as a showstopper.
+
+While this project is derived from a project I originaly wrote and never released ('cause it never worked enough for me to want to deal with the support on it), this implementation uses GPT-5.5 w/ GLM-5.2 review to patch some of the issues I was having and handle a lot of the P/Invoke reworking and Win32 drudgery (I was writing win32 in the 90s and am officially too old for that shit).
+
+If this implementation method bothers you, do not use this program. If you would like to reimplement it yourself, see the above Injection Path idea and create a project the good ol' open source way, by copying the BSD-Licensed GHR code I wrote by hand.
+
+## License
+
+MSTaint is BSD 3-Clause licensed.
+
+Copyright (c) 2026, Nonpolynomial, LLC
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+
+* Neither the name of buttplug nor the names of its
+  contributors may be used to endorse or promote products derived from
+  this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
