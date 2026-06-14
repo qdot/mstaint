@@ -48,7 +48,16 @@ The Forgejo Windows workflow expects these signing secrets, matching the token-b
 
 Set paint programs to use Windows Ink, Windows 8+ Pointer Input, or the program's equivalent modern pointer input mode for tablet pressure. MSTaint's current capture model is designed around the paint program keeping its own Windows Ink stream while MSTaint listens passively to driver-exposed Raw Input HID or WinTab pressure samples.
 
-Do not configure paint programs to require an exclusive WinTab stream if pressure stops reaching MSTaint or the paint program while the canvas is focused. In Krita, use the Windows Ink/Windows 8+ pointer tablet input mode. Clip Studio Paint should use its Tablet PC/Windows Ink path when available.
+Do not configure paint programs to require an exclusive WinTab stream if pressure stops reaching MSTaint or the paint program while the canvas is focused.
+
+**HOW TO TELL IF YOU ARE ON THE WRONG API**: If your paint program seems to only have off/on versus varying pressure, this usually means it is set to WinTab instead of Windows Ink. If you are using a program that cannot set to Windows Ink, please leave an issue here and we'll consider rebuilding this as a mod instead of a tee-style watcher, which should work with all systems. However, that solution may be brittle, see `Possible WinTab Injection Path` below.
+
+### Specific Paint Program Instructions
+
+- Krita: use the Windows Ink/Windows 8+ pointer tablet input mode (in Settings)
+- Clip Studio Paint: use Tablet PC/Windows Ink path when available (in Settings)
+- Fire Alpaca: Use "Tablet PC" in "Stylus Pressure API", even if on PC + Tablet
+- MyPaint: Currently not usable.
 
 ## Capture Notes
 
