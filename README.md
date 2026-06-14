@@ -26,6 +26,14 @@ Do not configure paint programs to require an exclusive WinTab stream if pressur
 - Fire Alpaca: Use "Tablet PC" in "Stylus Pressure API", even if on PC + Tablet
 - MyPaint: Currently not usable.
 
+## LLM Usage
+
+Since this is made to be used with paint programs, development methods bear mentioning as many potential users may see this as a showstopper.
+
+While this project is derived from a project I originaly wrote and never released ('cause it never worked enough for me to want to deal with the support on it), this implementation uses GPT-5.5 w/ GLM-5.2 review to patch some of the issues I was having and handle a lot of the P/Invoke reworking and Win32 drudgery (I was writing win32 in the 90s and am officially too old for that shit).
+
+If this implementation method bothers you, do not use this program. If you would like to reimplement it yourself, see the Injection Path section and create a project the good ol' open source way, by copying the BSD-Licensed GHR code I wrote by hand.
+
 ## Capture Notes
 
 The app starts a hidden capture window and enables passive capture paths:
@@ -76,14 +84,6 @@ This avoids shipping a proxy `wintab32.dll` and avoids recreating the full WinTa
 The hook must not independently read from the WinTab queue. It should forward to the real function first, let the paint app receive its packets unchanged, then copy the returned packet data into a local queue. A payload loop can batch those samples back to MSTaint, keeping IPC work out of the paint app's input thread.
 
 The hard part is still generic packet decoding. WinTab packet layout depends on the `LOGCONTEXT.lcPktData` requested by each app, so the payload needs per-context decoding logic rather than assuming a fixed packet structure. Supporting both 32-bit and 64-bit paint apps would also require matching hook payload builds.
-
-## LLM Usage
-
-Since this is made to be used with paint programs, development methods bear mentioning as many potential users may see this as a showstopper.
-
-While this project is derived from a project I originaly wrote and never released ('cause it never worked enough for me to want to deal with the support on it), this implementation uses GPT-5.5 w/ GLM-5.2 review to patch some of the issues I was having and handle a lot of the P/Invoke reworking and Win32 drudgery (I was writing win32 in the 90s and am officially too old for that shit).
-
-If this implementation method bothers you, do not use this program. If you would like to reimplement it yourself, see the above Injection Path idea and create a project the good ol' open source way, by copying the BSD-Licensed GHR code I wrote by hand.
 
 ## Build
 
