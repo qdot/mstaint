@@ -11,6 +11,16 @@ The current version targets Windows, connects to an external Intiface Central/En
 3. Run `MSTaint` from the Start Menu.
 4. Program opens as a tray app (currently with no icon, it'll just look like a window), there will be no App on the start bar. Open the settings window from the tray menu or by double-clicking the tray icon. The settings window and tray menu can both connect Intiface, scan for devices, arm/disarm output, open the pen test window, or trigger emergency stop.
 
+## Screenshots
+
+### Tray Menu
+
+[](docs/tray.png)
+
+### Settings Menu (May require resizing window to be larger)
+
+[](docs/settings.png)
+
 ## Paint Program Setup
 
 Set paint programs to use Windows Ink, Windows 8+ Pointer Input, or the program's equivalent modern pointer input mode for tablet pressure. MSTaint's current capture model is designed around the paint program keeping its own Windows Ink stream while MSTaint listens passively to driver-exposed Raw Input HID or WinTab pressure samples.
