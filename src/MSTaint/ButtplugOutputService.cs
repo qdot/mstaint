@@ -25,7 +25,7 @@ public sealed class ButtplugOutputService : IHapticsCommandSink, IAsyncDisposabl
                 return (_client?.Devices ?? [])
                     .Select(device => new HapticDevice(
                         device.Index,
-                        device.DisplayName,
+                        ResolveDeviceName(device.DisplayName, device.Name),
                         device.HasOutput(OutputType.Vibrate)))
                     .ToArray();
             }
@@ -168,7 +168,13 @@ public sealed class ButtplugOutputService : IHapticsCommandSink, IAsyncDisposabl
             await operationTask.ConfigureAwait(false);
         }
     }
+
+    internal static string ResolveDeviceName(string? displayName, string deviceName)
+    {
+        return string.IsNullOrWhiteSpace(displayName)
+            ? deviceName
+            : displayName;
+    }
 }
 
 public sealed record HapticDevice(uint Id, string Name, bool HasVibrate);
-

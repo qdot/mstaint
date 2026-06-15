@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1 - 2026-06-15
+
+### Fixed
+
+- Fall back to the Buttplug device name when Intiface does not provide a device display name.
+
 ## 1.0.0 - 2026-06-13
 
 ### Added
