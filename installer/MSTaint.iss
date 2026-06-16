@@ -1,6 +1,10 @@
 #define AppName "MSTaint"
-#define AppVersion "1.0.0"
-#define AppFileVersion "1.0.0.0"
+#ifndef AppVersion
+#define AppVersion "1.0.1"
+#endif
+#ifndef AppFileVersion
+#define AppFileVersion "1.0.1.0"
+#endif
 #define AppPublisher "qdot"
 #define AppExeName "MSTaint.exe"
 #define PublishDir "..\artifacts\publish\MSTaint"
